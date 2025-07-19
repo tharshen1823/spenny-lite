@@ -14,7 +14,7 @@ def get_db_connection():
 @app.route('/')
 def index():
     conn = get_db_connection()
-    expenses = conn.execute('SELECT * FROM expenses ORDER BY date').fetchall()
+    expenses = conn.execute('SELECT * FROM expenses ORDER BY date DESC, category ASC, amount DESC').fetchall()
 
     # Fetch category totals
     category_rows = conn.execute(
