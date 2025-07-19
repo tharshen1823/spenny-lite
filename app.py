@@ -14,7 +14,7 @@ def get_db_connection():
 @app.route('/')
 def index():
     conn = get_db_connection()
-    expenses = conn.execute('SELECT * FROM expenses').fetchall()
+    expenses = conn.execute('SELECT * FROM expenses ORDER BY date').fetchall()
 
     # Fetch category totals
     category_rows = conn.execute(
@@ -23,7 +23,7 @@ def index():
 
     category_data = {row['category']: row['total'] for row in category_rows}
 
-    total = conn.execute('SELECT SUM(amount) FROM expenses').fetchone()[0] or 0
+    total = conn.execute('SELECT SUM(amount) FROM expenses ').fetchone()[0] or 0
     conn.close()
     return render_template(
         'index.html',
