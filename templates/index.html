@@ -34,11 +34,11 @@
         <tbody>
             {% for e in expenses %}
             <tr>
-                <td>{{ e['date'] }}</td>
-                <td>{{ "%.2f"|format(e['amount']) }}</td>
-                <td>{{ e['description'] }}</td>
-                <td>{{ e['category'] }}</td>
-                <td><a href="/delete/{{ e['id'] }}">Delete</a></td>
+                <td>{{ e[4] }}</td>  <!-- date -->
+                <td>{{ "%.2f"|format(e[1]) }}</td>  <!-- amount -->
+                <td>{{ e[2] }}</td>  <!-- description -->
+                <td>{{ e[3] }}</td>  <!-- category -->
+                <td><a href="/delete/{{ e[0] }}">Delete</a></td>  <!-- id -->
             </tr>
             {% endfor %}
         </tbody>
