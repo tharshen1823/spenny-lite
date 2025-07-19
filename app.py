@@ -1,20 +1,14 @@
 from flask import Flask, render_template, request, redirect
-import sqlite3
 import psycopg2
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 app = Flask(__name__)
 
-IS_PRODUCTION = 'DATABASE_URL' in os.environ
-
-# Connect to database
+# Connect to PostgreSQL
 def get_db_connection():
-    if IS_PRODUCTION:
-        return psycopg2.connect(os.environ['DATABASE_URL'])
-    else:
-        conn = sqlite3.connect('expenses.db')
-        conn.row_factory = sqlite3.Row
-        return conn
+    return psycopg2.connect(os.environ['DATABASE_URL'])
 
 # Home route
 @app.route('/')
@@ -44,6 +38,7 @@ def index():
 
 # Add expense
 @app.route('/add', methods=['POST'])
+@app.route('/add', methods=['POST'])
 def add_expense():
     amount = request.form['amount']
     description = request.form['description']
@@ -53,21 +48,16 @@ def add_expense():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    if IS_PRODUCTION:
-        cur.execute(
-            'INSERT INTO expenses (amount, description, category, date) VALUES (%s, %s, %s, %s)',
-            (amount, description, category, date)
-        )
-    else:
-        cur.execute(
-            'INSERT INTO expenses (amount, description, category, date) VALUES (?, ?, ?, ?)',
-            (amount, description, category, date)
-        )
+    cur.execute(
+        'INSERT INTO expenses (amount, description, category, date) VALUES (%s, %s, %s, %s)',
+        (amount, description, category, date)
+    )
 
     conn.commit()
     cur.close()
     conn.close()
     return redirect('/')
+
 
 # Delete expense
 @app.route('/delete/<int:id>')
@@ -75,28 +65,13 @@ def delete_expense(id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    if IS_PRODUCTION:
-        cur.execute('DELETE FROM expenses WHERE id = %s', (id,))
-    else:
-        cur.execute('DELETE FROM expenses WHERE id = ?', (id,))
+    cur.execute('DELETE FROM expenses WHERE id = %s', (id,))
 
     conn.commit()
     cur.close()
     conn.close()
     return redirect('/')
 
-# Auto-create SQLite table if needed
-if not IS_PRODUCTION and not os.path.exists('expenses.db'):
-    conn = sqlite3.connect('expenses.db')
-    conn.execute('''CREATE TABLE expenses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        amount REAL NOT NULL,
-        description TEXT NOT NULL,
-        category TEXT NOT NULL,
-        date TEXT NOT NULL
-    )''')
-    conn.commit()
-    conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True)
