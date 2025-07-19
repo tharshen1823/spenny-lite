@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spenny Lite</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+    <h1>Spenny Lite - Expense Tracker</h1>
+
+    <!-- Add Expense Form -->
+    <form action="/add" method="POST">
+        <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+        <input type="text" name="description" placeholder="Description" required>
+        <input type="text" name="category" placeholder="Category" required>
+        <input type="date" name="date" required>
+        <button type="submit">Add Expense</button>
+    </form>
+
+    <h2>Total Spent: RM{{ "%.2f"|format(total) }}</h2>
+
+    <!-- Expense Table -->
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Amount (RM)</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in expenses %}
+            <tr>
+                <td>{{ e['date'] }}</td>
+                <td>{{ "%.2f"|format(e['amount']) }}</td>
+                <td>{{ e['description'] }}</td>
+                <td>{{ e['category'] }}</td>
+                <td><a href="/delete/{{ e['id'] }}">Delete</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Spending Breakdown by Category</h2>
+    <div style="max-width: 400px; margin: auto;">
+    <canvas id="pieChart"></canvas>
+    </div>
+
+    <script>
+        const data = {{ category_data | tojson }};
+        const labels = Object.keys(data);
+        const values = Object.values(data);
+
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Expenses by Category',
+                    data: values,
+                    backgroundColor: [
+                        '#FF4C4C', // red
+                        '#FF8C42', // orange
+                        '#FFD000', // yellow
+                        '#3EDC81', // green
+                        '#3FA9F5', // blue
+                        '#A259FF', // purple
+                        '#FF4FCB', // pink
+                    ]
+                }]
+            }   
+        });
+    </script>
+</body>
+</html>
