@@ -1,39 +1,48 @@
 from flask import Flask, render_template, request, redirect
 import sqlite3
-import json
+import psycopg2
+import os
 
 app = Flask(__name__)
 
+IS_PRODUCTION = 'DATABASE_URL' in os.environ
+
 # Connect to database
 def get_db_connection():
-    conn = sqlite3.connect('expenses.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+    if IS_PRODUCTION:
+        return psycopg2.connect(os.environ['DATABASE_URL'])
+    else:
+        conn = sqlite3.connect('expenses.db')
+        conn.row_factory = sqlite3.Row
+        return conn
 
-# Home route — shows all expenses
+# Home route
 @app.route('/')
 def index():
     conn = get_db_connection()
-    expenses = conn.execute('SELECT * FROM expenses ORDER BY date DESC, category ASC, amount DESC').fetchall()
+    cur = conn.cursor()
 
-    # Fetch category totals
-    category_rows = conn.execute(
-    'SELECT category, SUM(amount) as total FROM expenses GROUP BY category'
-    ).fetchall()
+    cur.execute('SELECT * FROM expenses ORDER BY date DESC, category ASC, amount DESC')
+    expenses = cur.fetchall()
 
-    category_data = {row['category']: row['total'] for row in category_rows}
+    cur.execute('SELECT category, SUM(amount) FROM expenses GROUP BY category')
+    category_rows = cur.fetchall()
+    category_data = {row[0]: row[1] for row in category_rows}
 
-    total = conn.execute('SELECT SUM(amount) FROM expenses ').fetchone()[0] or 0
+    cur.execute('SELECT SUM(amount) FROM expenses')
+    total = cur.fetchone()[0] or 0
+
+    cur.close()
     conn.close()
+
     return render_template(
         'index.html',
         expenses=expenses,
         total=total,
-        category_data=category_data  # or use tojson in HTML
+        category_data=category_data
     )
 
-
-# Handle form submission
+# Add expense
 @app.route('/add', methods=['POST'])
 def add_expense():
     amount = request.form['amount']
@@ -42,26 +51,42 @@ def add_expense():
     date = request.form['date']
 
     conn = get_db_connection()
-    conn.execute(
-        'INSERT INTO expenses (amount, description, category, date) VALUES (?, ?, ?, ?)',
-        (amount, description, category, date)
-    )
+    cur = conn.cursor()
+
+    if IS_PRODUCTION:
+        cur.execute(
+            'INSERT INTO expenses (amount, description, category, date) VALUES (%s, %s, %s, %s)',
+            (amount, description, category, date)
+        )
+    else:
+        cur.execute(
+            'INSERT INTO expenses (amount, description, category, date) VALUES (?, ?, ?, ?)',
+            (amount, description, category, date)
+        )
+
     conn.commit()
+    cur.close()
     conn.close()
     return redirect('/')
 
-# Delete an expense
+# Delete expense
 @app.route('/delete/<int:id>')
 def delete_expense(id):
     conn = get_db_connection()
-    conn.execute('DELETE FROM expenses WHERE id = ?', (id,))
+    cur = conn.cursor()
+
+    if IS_PRODUCTION:
+        cur.execute('DELETE FROM expenses WHERE id = %s', (id,))
+    else:
+        cur.execute('DELETE FROM expenses WHERE id = ?', (id,))
+
     conn.commit()
+    cur.close()
     conn.close()
     return redirect('/')
 
-import os
-
-if not os.path.exists('expenses.db'):
+# Auto-create SQLite table if needed
+if not IS_PRODUCTION and not os.path.exists('expenses.db'):
     conn = sqlite3.connect('expenses.db')
     conn.execute('''CREATE TABLE expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +97,6 @@ if not os.path.exists('expenses.db'):
     )''')
     conn.commit()
     conn.close()
-
 
 if __name__ == '__main__':
     app.run(debug=True)
